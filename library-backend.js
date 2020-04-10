@@ -112,7 +112,7 @@ const typeDefs = gql`
   type Book {
     title: String!
     published: Int!
-    author: Author!
+    author: Author
     genres: [String!]
     id: ID!
   }
@@ -147,7 +147,7 @@ const resolvers = {
       if (args.genre) {
         return books.filter((book) => book.genres.includes(args.genre))
       }
-      return Book.find({})
+      return Book.find({}).populate('author')
     },
     findBook: (root, args) => Book.findOne({ title: args.title }),
 
@@ -156,10 +156,11 @@ const resolvers = {
     findAuthor: (root, args) => Author.findOne({ name: args.name }),
   },
   Author: {
-    bookCount: (root) => {
-      const books = Book.find({})
+    bookCount: async (root) => {
+      const books = await Book.find({}).populate('author')
+      console.log(books)
       const count = books.reduce(function (n, val) {
-        return n + (val.author === root.name)
+        return n + (val.author.name === root.name)
       }, 0)
       return count
     },
@@ -168,15 +169,21 @@ const resolvers = {
   Mutation: {
     addBook: async (root, args) => {
       const book = new Book({ ...args })
+      // console.log(book.author)
 
-      const authorInDb = Author.find({ name: { $in: book.author } })
+      const authorInDb = await Author.findOne({ name: args.author })
+      console.log('fsddfdf', authorInDb)
 
       try {
-        await book.save()
-        if (!authorInDb) {
-          const author = { name: args.author }
-          author.save()
+        if (authorInDb !== null) {
+          book.author = authorInDb
+          return await book.save()
         }
+        const author = new Author({ name: args.author })
+        const savedAuthor = await author.save()
+
+        book.author = savedAuthor
+        await book.save()
       } catch (error) {
         throw new UserInputError(error.message, {
           invalidArgs: args,
