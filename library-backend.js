@@ -7,11 +7,14 @@ const {
   AuthenticationError,
 } = require('apollo-server')
 
-const uuid = require('uuid/v1')
+const jwt = require('jsonwebtoken')
+
+// const uuid = require('uuid/v1')
 
 const mongoose = require('mongoose')
 const Book = require('./models/book')
 const Author = require('./models/author')
+const User = require('./models/user')
 
 mongoose.set('useFindAndModify', false)
 
@@ -174,6 +177,9 @@ const resolvers = {
     authorCount: () => Book.collection.countDocuments(),
     allAuthors: () => Author.find({}),
     findAuthor: (root, args) => Author.findOne({ name: args.name }),
+    me: (root, args, context) => {
+      return context.currentUser
+    },
   },
   Author: {
     bookCount: async (root) => {
@@ -221,7 +227,13 @@ const resolvers = {
       return book
     },
 
-    editAuthor: async (root, args) => {
+    editAuthor: async (root, args, context) => {
+      const currentUser = context.currentUser
+
+      if (!currentUser) {
+        throw new AuthenticationError('not authenticated')
+      }
+
       const author = await Author.findOne({ name: args.name })
       if (!author) {
         return null
