@@ -8,8 +8,9 @@ const {
   PubSub,
 } = require('apollo-server')
 
-const jwt = require('jsonwebtoken')
 const pubsub = new PubSub()
+
+const jwt = require('jsonwebtoken')
 
 // const uuid = require('uuid/v1')
 
